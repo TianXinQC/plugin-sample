@@ -20,3 +20,86 @@
     padding: 2px 8px;
   }
 }
+
+/* 表1、表2、表3固定宽度和水平滚动条样式 */
+.file-tree-section {
+  /* 固定宽度为120px，高度为600px */
+  width: 120px;
+  min-width: 120px;
+  max-width: 120px;
+  height: 600px;
+  
+  .tree-list {
+    /* 启用水平滚动 */
+    overflow-x: auto;
+    overflow-y: auto;
+    
+    .tree-item {
+        /* 确保项目不换行，启用水平滚动 */
+        white-space: nowrap;
+        min-width: max-content;
+        display: block;
+        padding: 2px 4px;
+        cursor: pointer;
+        border-radius: 2px;
+        margin: 1px 0;
+        font-size: 14px;
+        color: #a1a1a1;
+        
+        /* 奇偶行背景色区分 */
+        &:nth-child(odd) {
+          background-color: var(--b3-theme-background-light);
+        }
+        
+        &:nth-child(even) {
+          background-color: var(--b3-theme-surface);
+        }
+        
+        /* 悬停效果 */
+        &:hover {
+          background-color: var(--b3-theme-primary-lighter) !important;
+        }
+        
+        /* 选中状态 */
+        &.selected {
+          background-color: var(--b3-theme-primary-light) !important;
+          color: var(--b3-theme-on-primary);
+        }
+        
+        /* 项目内容样式 */
+        span {
+          display: inline-block;
+          min-width: max-content;
+        }
+      }
+    
+    /* 自定义滚动条样式 */
+    &::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: var(--b3-scroll-color);
+      border-radius: 3px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: var(--b3-scroll-color);
+      border-radius: 3px;
+      
+      &:hover {
+        background: var(--b3-scroll-color-hover);
+      }
+    }
+    
+    /* 确保滚动条始终可见 */
+    &::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+    }
+  }
+}
