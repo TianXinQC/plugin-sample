@@ -120,15 +120,6 @@ export default class PluginSample extends Plugin {
             currentLevel2DocPath = doc.path;
             this.currentLevel2DocPath = doc.path;
             
-            // 无论是否有子文档，都在标签页中打开文档
-            openTab({
-                app: this.app,
-                doc: {
-                    id: doc.id,
-                    action: [Constants.CB_GET_FOCUS]
-                }
-            });
-            
             // 如果有子文档，同时在表3中显示子文档
             if (doc.subFileCount > 0) {
                 const savedLevel3Path = (doc.path === savedState.currentLevel2DocPath) ? savedState.currentLevel3DocPath : undefined;
@@ -142,14 +133,6 @@ export default class PluginSample extends Plugin {
         
         const onLevel3DocClick = (doc: any) => {
             currentLevel3DocPath = doc.path;
-            // 在新标签页中打开文档
-            openTab({
-                app: this.app,
-                doc: {
-                    id: doc.id,
-                    action: [Constants.CB_GET_FOCUS]
-                }
-            });
             saveCurrentState();
         };
         
@@ -392,6 +375,23 @@ export default class PluginSample extends Plugin {
                     onItemClick(item);
                 }
             });
+            
+            // 添加双击事件 - 只针对文档
+            if (itemType === 'document') {
+                element.addEventListener('dblclick', () => {
+                    const id = element.getAttribute('data-id');
+                    const item = items.find(i => i.id === id);
+                    if (item) {
+                        openTab({
+                            app: this.app,
+                            doc: {
+                                id: item.id,
+                                action: [Constants.CB_GET_FOCUS]
+                            }
+                        });
+                    }
+                });
+            }
             
             // 添加右键菜单
             element.addEventListener('contextmenu', (e) => {
@@ -2223,14 +2223,6 @@ export default class PluginSample extends Plugin {
                 level4Container.innerHTML = '';
                 this.currentLevel3Docs.length = 0;
                 this.currentLevel4Docs.length = 0;
-                // 如果是最后一级文档，在新标签页中打开
-                openTab({
-                    app: this.app,
-                    doc: {
-                        id: doc.id,
-                        action: [Constants.CB_GET_FOCUS]
-                    }
-                });
             }
         };
         
@@ -2243,28 +2235,12 @@ export default class PluginSample extends Plugin {
             } else {
                 level4Container.innerHTML = '<div style="color: #888; padding: 8px; font-size: 14px;">无更深层文档</div>';
                 this.currentLevel4Docs.length = 0;
-                // 如果是最后一级文档，在新标签页中打开
-                openTab({
-                    app: this.app,
-                    doc: {
-                        id: doc.id,
-                        action: [Constants.CB_GET_FOCUS]
-                    }
-                });
             }
         };
         
         this.onLevel4DocClick = (doc: any) => {
             console.log('选中第4级文档:', doc);
             this.currentLevel4DocPath = doc.path;
-            // 第4级文档直接在新标签页中打开
-            openTab({
-                app: this.app,
-                doc: {
-                    id: doc.id,
-                    action: [Constants.CB_GET_FOCUS]
-                }
-            });
         };
 
         // 搜索功能
@@ -2544,13 +2520,34 @@ export default class PluginSample extends Plugin {
                 container.querySelectorAll('.selected').forEach(el => {
                     el.classList.remove('selected');
                 });
-                
+                 
                 // 添加选中状态
                 itemElement.classList.add('selected');
                  
                  console.log('调用回调函数');
                  onItemClick(item);
              });
+             
+             // 添加右键菜单（仅针对文档项）
+             if (item.path) {  // 假设文档有path属性，笔记本没有
+                 itemElement.addEventListener('contextmenu', (e) => {
+                     e.preventDefault();
+                     const menu = new Menu('open-doc-menu');
+                     menu.addItem({
+                         label: '打开文档',
+                         click: () => {
+                             openTab({
+                                 app: this.app,
+                                 doc: {
+                                     id: item.id,
+                                     action: [Constants.CB_GET_FOCUS]
+                                 }
+                             });
+                         }
+                     });
+                     menu.open({ x: e.clientX, y: e.clientY });
+                 });
+             }
              
              container.appendChild(itemElement);
          });
@@ -2680,7 +2677,7 @@ export default class PluginSample extends Plugin {
     </div>
 </div>`;
                 } else {
-                    dock.element.innerHTML = `<div class="fn__flex-1 fn__flex-column">
+                    dock.element.innerHTML = `<div class="fn__flex-1 fn__flex-column" style="overflow: hidden;">
     <div class="block__icons">
         <div class="block__logo">
             <svg class="block__logoicon"><use xlink:href="#iconEmoji"></use></svg>Custom Dock
@@ -2719,7 +2716,8 @@ export default class PluginSample extends Plugin {
                 console.log("file_tree_dock update");
             },
             init: (dock) => {
-                dock.element.innerHTML = `<div class="fn__flex-1 fn__flex-column">
+                dock.element.style.overflow = 'hidden';
+                dock.element.innerHTML = `<div class="fn__flex-1 fn__flex-column" style="overflow: hidden;">
     <div class="block__icons">
         <div class="block__logo">
             <svg class="block__logoicon"><use xlink:href="#iconFiles"></use></svg>文档面板
@@ -2728,24 +2726,24 @@ export default class PluginSample extends Plugin {
         <span id="dock-refresh-btn" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="获取文档面板信息" style="cursor: pointer;"><svg><use xlink:href="#iconRefresh"></use></svg></span>
         <span data-type="min" class="block__icon b3-tooltips b3-tooltips__sw" aria-label="Min ${adaptHotkey("⌘W")}"><svg><use xlink:href="#iconMin"></use></svg></span>
     </div>
-    <div class="fn__flex-1" style="padding: 4px; display: flex; flex-direction: row; gap: 4px;">
+    <div class="fn__flex-1" style="padding: 4px; display: flex; flex-direction: row; gap: 4px; overflow: hidden;">
         <!-- 表1: 笔记本列表 -->
-        <div class="file-tree-section" style="flex: 1; border: 1px solid #444; border-radius: 4px; background: #2d2d2d; height: 730px;">
+        <div class="file-tree-section" style="flex: 1; border: 1px solid #444; border-radius: 4px; background: #2d2d2d;">
             <div style="padding: 4px; border-bottom: 1px solid #444; background: #333; font-size: 14px; font-weight: bold;">表1 - 笔记本</div>
                 <input type="text" id="dock-search-level-1" placeholder="搜索笔记本..." style="width: calc(100% - 8px); margin: 4px; padding: 2px; background: #1a1a1a; color: #fff; border: 1px solid #555; border-radius: 2px; font-size: 14px;">
-                <div id="dock-tree-level-1" class="tree-list" style="height: calc(100% - 60px); overflow-y: auto; padding: 4px; font-size: 14px;"></div>
+                <div id="dock-tree-level-1" class="tree-list" style="height: calc(100% - 80px); padding: 4px; font-size: 14px;"></div>
         </div>
         <!-- 表2: 文档列表 -->
-        <div class="file-tree-section" style="flex: 1; border: 1px solid #444; border-radius: 4px; background: #2d2d2d; height: 730px;">
+        <div class="file-tree-section" style="flex: 1; border: 1px solid #444; border-radius: 4px; background: #2d2d2d;">
             <div style="padding: 4px; border-bottom: 1px solid #444; background: #333; font-size: 14px; font-weight: bold;">表2 - 文档</div>
                 <input type="text" id="dock-search-level-2" placeholder="搜索文档..." style="width: calc(100% - 8px); margin: 4px; padding: 2px; background: #1a1a1a; color: #fff; border: 1px solid #555; border-radius: 2px; font-size: 14px;">
-                <div id="dock-tree-level-2" class="tree-list" style="height: calc(100% - 60px); overflow-y: auto; padding: 4px; font-size: 14px;"></div>
+                <div id="dock-tree-level-2" class="tree-list" style="height: calc(100% - 80px); padding: 4px; font-size: 14px;"></div>
         </div>
         <!-- 表3: 子文档列表 -->
-        <div class="file-tree-section" style="flex: 1; border: 1px solid #444; border-radius: 4px; background: #2d2d2d; height: 730px;">
+        <div class="file-tree-section" style="flex: 1; border: 1px solid #444; border-radius: 4px; background: #2d2d2d;">
             <div style="padding: 4px; border-bottom: 1px solid #444; background: #333; font-size: 14px; font-weight: bold;">表3 - 子文档</div>
                 <input type="text" id="dock-search-level-3" placeholder="搜索子文档..." style="width: calc(100% - 8px); margin: 4px; padding: 2px; background: #1a1a1a; color: #fff; border: 1px solid #555; border-radius: 2px; font-size: 14px;">
-                <div id="dock-tree-level-3" class="tree-list" style="height: calc(100% - 60px); overflow-y: auto; padding: 4px; font-size: 14px;"></div>
+                <div id="dock-tree-level-3" class="tree-list" style="height: calc(100% - 80px); padding: 4px; font-size: 14px;"></div>
         </div>
     </div>
 </div>`;
@@ -2932,6 +2930,24 @@ export default class PluginSample extends Plugin {
         });
         
         detail.menu.addItem({
+            id: "pluginSample_translateToEnglish",
+            iconHTML: "🌐",
+            label: "翻译成英文",
+            click: () => {
+                this.showTranslateDialog();
+            }
+        });
+        
+        detail.menu.addItem({
+            id: "pluginSample_translateToChinese",
+            iconHTML: "🇨🇳",
+            label: "翻译成中文",
+            click: () => {
+                this.showTranslateToChineseDialog();
+            }
+        });
+        
+        detail.menu.addItem({
             id: "pluginSample_setBoldColor",
             iconHTML: "🎨",
             label: "设置粗体颜色",
@@ -3016,6 +3032,21 @@ export default class PluginSample extends Plugin {
         });
         
         detail.menu.addItem({
+            id: "pluginSample_baidu",
+            iconHTML: "🔍",
+            label: "Baidu",
+            click: () => {
+                const selection = window.getSelection();
+                let selectedText = "生活"; // 默认值
+                if (selection && selection.toString().trim()) {
+                    selectedText = selection.toString().trim();
+                }
+                const searchUrl = `https://www.baidu.com/s?ie=utf-8&f=8&rsv_bp=1&wd=${encodeURIComponent(selectedText)}`;
+                window.open(searchUrl, '_blank');
+            }
+        });
+        
+                detail.menu.addItem({
             id: "pluginSample_rhyme",
             iconHTML: "📖",
             label: "有道词典",
@@ -3373,6 +3404,364 @@ export default class PluginSample extends Plugin {
             }
         } finally {
             reader.releaseLock();
+        }
+    }
+
+    private showTranslateDialog() {
+        const dialog = new Dialog({
+            title: "翻译成英文",
+            content: `<div class="b3-dialog__content" style="background: #1a1a1a; color: #ffffff;">
+    <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; color: #ffffff;">文档内容:</label>
+        <textarea id="translate-content" class="b3-text-field" style="width: 100%; height: 120px; background: #2d2d2d; color: #ffffff; border: 1px solid #444; resize: vertical; font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;" readonly>正在获取文档内容...</textarea>
+    </div>
+    <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; color: #ffffff;">翻译结果:</label>
+        <textarea id="translate-output" class="b3-text-field" style="width: 100%; height: 300px; background: #2d2d2d; color: #ffffff; border: 1px solid #444; resize: vertical; font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;" readonly>等待翻译...</textarea>
+    </div>
+</div>
+<div class="b3-dialog__action" style="background: #1a1a1a; border-top: 1px solid #444;">
+    <button class="b3-button b3-button--text" id="translate-submit" style="background: #0066cc; color: #fff; border: 1px solid #0066cc;">开始翻译</button>
+    <div class="fn__space"></div>
+    <button class="b3-button" id="translate-stop" style="background: #dc3545; color: #fff; border: 1px solid #dc3545; display: none;">中断</button>
+    <div class="fn__space"></div>
+    <button class="b3-button" id="translate-insert" style="background: #ff6b35; color: #fff; border: 1px solid #ff6b35;">插入</button>
+    <div class="fn__space"></div>
+    <button class="b3-button" id="translate-copy" style="background: #28a745; color: #fff; border: 1px solid #28a745;">复制</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--cancel" style="background: #444; color: #fff; border: 1px solid #666;">取消</button>
+</div>`,
+            width: this.isMobile ? "92vw" : "700px",
+            height: "600px",
+        });
+
+        const contentTextarea = dialog.element.querySelector("#translate-content") as HTMLTextAreaElement;
+        const outputDiv = dialog.element.querySelector("#translate-output") as HTMLTextAreaElement;
+        const submitBtn = dialog.element.querySelector("#translate-submit") as HTMLButtonElement;
+        const stopBtn = dialog.element.querySelector("#translate-stop") as HTMLButtonElement;
+        const insertBtn = dialog.element.querySelector("#translate-insert") as HTMLButtonElement;
+        const copyBtn = dialog.element.querySelector("#translate-copy") as HTMLButtonElement;
+        const cancelBtn = dialog.element.querySelector(".b3-button--cancel") as HTMLButtonElement;
+        
+        let currentAbortController: AbortController | null = null;
+
+        // 获取当前文档内容
+        this.getCurrentDocumentTextContent().then(content => {
+            contentTextarea.value = content;
+        }).catch(error => {
+            contentTextarea.value = "获取文档内容失败: " + error.message;
+        });
+
+        cancelBtn.addEventListener("click", () => {
+            dialog.destroy();
+        });
+
+        insertBtn.addEventListener("click", async () => {
+            const translatedContent = outputDiv.value.trim();
+            if (!translatedContent || translatedContent === "等待翻译..." || translatedContent.startsWith("翻译失败")) {
+                showMessage("请先完成翻译", 3000, "warning");
+                return;
+            }
+            
+            try {
+                await this.replaceDocumentContent(translatedContent);
+                showMessage("翻译内容已插入文档", 2000, "info");
+                dialog.destroy();
+            } catch (error) {
+                showMessage("插入失败: " + error.message, 3000, "error");
+            }
+        });
+
+        copyBtn.addEventListener("click", async () => {
+            try {
+                const textContent = outputDiv.value || "";
+                await navigator.clipboard.writeText(textContent);
+                
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = "已复制";
+                copyBtn.style.background = "#218838";
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = "#28a745";
+                }, 1500);
+                
+                showMessage("翻译结果已复制到剪贴板", 2000, "info");
+            } catch (error) {
+                showMessage("复制失败: " + error.message, 3000, "error");
+            }
+        });
+
+        stopBtn.addEventListener("click", () => {
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+                submitBtn.disabled = false;
+                submitBtn.textContent = "开始翻译";
+                stopBtn.style.display = "none";
+                outputDiv.value += "\n\n[翻译已中断]";
+            }
+        });
+
+        submitBtn.addEventListener("click", async () => {
+            const content = contentTextarea.value.trim();
+            if (!content || content === "正在获取文档内容..." || content.startsWith("获取文档内容失败")) {
+                showMessage("请先获取有效的文档内容", 3000, "warning");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "翻译中...";
+            stopBtn.style.display = "inline-block";
+            outputDiv.value = "";
+            
+            currentAbortController = new AbortController();
+            
+            const prompt = `请将以下中文内容翻译成英文，并按照一句中文、一句英文的格式输出。请保持原文的段落结构和格式。\n\n${content}`;
+            
+            try {
+                await this.callDeepSeekAPI(prompt, outputDiv, currentAbortController);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    outputDiv.value += "\n\n[翻译已中断]";
+                } else {
+                    outputDiv.value = "翻译失败: " + error.message;
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "开始翻译";
+                stopBtn.style.display = "none";
+                currentAbortController = null;
+            }
+        });
+    }
+
+    private showTranslateToChineseDialog() {
+        const dialog = new Dialog({
+            title: "翻译成中文",
+            content: `<div class="b3-dialog__content" style="background: #1a1a1a; color: #ffffff;">
+    <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; color: #ffffff;">文档内容:</label>
+        <textarea id="translate-to-chinese-content" class="b3-text-field" style="width: 100%; height: 120px; background: #2d2d2d; color: #ffffff; border: 1px solid #444; resize: vertical; font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;" readonly>正在获取文档内容...</textarea>
+    </div>
+    <div style="margin-bottom: 16px;">
+        <label style="display: block; margin-bottom: 8px; color: #ffffff;">翻译结果:</label>
+        <textarea id="translate-to-chinese-output" class="b3-text-field" style="width: 100%; height: 300px; background: #2d2d2d; color: #ffffff; border: 1px solid #444; resize: vertical; font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;" readonly>等待翻译...</textarea>
+    </div>
+</div>
+<div class="b3-dialog__action" style="background: #1a1a1a; border-top: 1px solid #444;">
+    <button class="b3-button b3-button--text" id="translate-to-chinese-submit" style="background: #0066cc; color: #fff; border: 1px solid #0066cc;">开始翻译</button>
+    <div class="fn__space"></div>
+    <button class="b3-button" id="translate-to-chinese-stop" style="background: #dc3545; color: #fff; border: 1px solid #dc3545; display: none;">中断</button>
+    <div class="fn__space"></div>
+    <button class="b3-button" id="translate-to-chinese-insert" style="background: #ff6b35; color: #fff; border: 1px solid #ff6b35;">插入</button>
+    <div class="fn__space"></div>
+    <button class="b3-button" id="translate-to-chinese-copy" style="background: #28a745; color: #fff; border: 1px solid #28a745;">复制</button>
+    <div class="fn__space"></div>
+    <button class="b3-button b3-button--cancel" style="background: #444; color: #fff; border: 1px solid #666;">取消</button>
+</div>`,
+            width: this.isMobile ? "92vw" : "700px",
+            height: "600px",
+        });
+
+        const contentTextarea = dialog.element.querySelector("#translate-to-chinese-content") as HTMLTextAreaElement;
+        const outputDiv = dialog.element.querySelector("#translate-to-chinese-output") as HTMLTextAreaElement;
+        const submitBtn = dialog.element.querySelector("#translate-to-chinese-submit") as HTMLButtonElement;
+        const stopBtn = dialog.element.querySelector("#translate-to-chinese-stop") as HTMLButtonElement;
+        const insertBtn = dialog.element.querySelector("#translate-to-chinese-insert") as HTMLButtonElement;
+        const copyBtn = dialog.element.querySelector("#translate-to-chinese-copy") as HTMLButtonElement;
+        const cancelBtn = dialog.element.querySelector(".b3-button--cancel") as HTMLButtonElement;
+        
+        let currentAbortController: AbortController | null = null;
+
+        // 获取当前文档内容
+        this.getCurrentDocumentTextContent().then(content => {
+            contentTextarea.value = content;
+        }).catch(error => {
+            contentTextarea.value = "获取文档内容失败: " + error.message;
+        });
+
+        cancelBtn.addEventListener("click", () => {
+            dialog.destroy();
+        });
+
+        insertBtn.addEventListener("click", async () => {
+            const translatedContent = outputDiv.value.trim();
+            if (!translatedContent || translatedContent === "等待翻译..." || translatedContent.startsWith("翻译失败")) {
+                showMessage("请先完成翻译", 3000, "warning");
+                return;
+            }
+            
+            try {
+                await this.replaceDocumentContent(translatedContent);
+                showMessage("翻译内容已插入文档", 2000, "info");
+                dialog.destroy();
+            } catch (error) {
+                showMessage("插入失败: " + error.message, 3000, "error");
+            }
+        });
+
+        copyBtn.addEventListener("click", async () => {
+            try {
+                const textContent = outputDiv.value || "";
+                await navigator.clipboard.writeText(textContent);
+                
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = "已复制";
+                copyBtn.style.background = "#218838";
+                
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.style.background = "#28a745";
+                }, 1500);
+                
+                showMessage("翻译结果已复制到剪贴板", 2000, "info");
+            } catch (error) {
+                showMessage("复制失败: " + error.message, 3000, "error");
+            }
+        });
+
+        stopBtn.addEventListener("click", () => {
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+                submitBtn.disabled = false;
+                submitBtn.textContent = "开始翻译";
+                stopBtn.style.display = "none";
+                outputDiv.value += "\n\n[翻译已中断]";
+            }
+        });
+
+        submitBtn.addEventListener("click", async () => {
+            const content = contentTextarea.value.trim();
+            if (!content || content === "正在获取文档内容..." || content.startsWith("获取文档内容失败")) {
+                showMessage("请先获取有效的文档内容", 3000, "warning");
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "翻译中...";
+            stopBtn.style.display = "inline-block";
+            outputDiv.value = "";
+            
+            currentAbortController = new AbortController();
+            
+            const prompt = `请将以下中文内容逐句翻译成英文，然后按照一句英文、一句中文的格式输出。请保持原文的段落结构和格式。\n\n${content}`;
+            
+            try {
+                await this.callDeepSeekAPI(prompt, outputDiv, currentAbortController);
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    outputDiv.value += "\n\n[翻译已中断]";
+                } else {
+                    outputDiv.value = "翻译失败: " + error.message;
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "开始翻译";
+                stopBtn.style.display = "none";
+                currentAbortController = null;
+            }
+        });
+    }
+
+    private async getCurrentDocumentTextContent(): Promise<string> {
+        try {
+            const editor = this.getEditor();
+            if (!editor) {
+                throw new Error("请先打开一个文档");
+            }
+            
+            const blockId = editor.protyle.block.rootID;
+            
+            // 使用思源笔记API获取文档内容
+            const response = await fetch('/api/block/getBlockKramdown', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: blockId
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            if (result.code !== 0) {
+                throw new Error(result.msg || "获取文档内容失败");
+            }
+            
+            // 返回kramdown格式的内容，提取纯文本
+            const kramdownContent = result.data.kramdown || "";
+            
+            // 提取纯文本内容，去除所有markdown标记和思源笔记的属性，保留换行结构
+            let cleanContent = kramdownContent
+                .replace(/\{:[^}]*\}/g, '') // 去除思源笔记的属性标记
+                .replace(/^#{1,6}\s+/gm, '') // 去除标题标记
+                .replace(/\*\*(.*?)\*\*/g, '$1') // 去除粗体标记
+                .replace(/\*(.*?)\*/g, '$1') // 去除斜体标记
+                .replace(/`(.*?)`/g, '$1') // 去除行内代码标记
+                .replace(/```[\s\S]*?```/g, '') // 去除代码块
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // 去除链接，保留文本
+                .replace(/^\s*[-*+]\s+/gm, '') // 去除列表标记
+                .replace(/^\s*\d+\.\s+/gm, '') // 去除有序列表标记
+                .replace(/^\s*>\s+/gm, '') // 去除引用标记
+                .replace(/\|[^\n]*\|/g, '') // 去除表格
+                .replace(/^\s*===\s*$/gm, '') // 去除分隔线
+                .replace(/^\s*---\s*$/gm, '') // 去除分隔线
+                .replace(/\n{3,}/g, '\n\n'); // 合并多个换行为双换行
+            
+            // 按行处理，去除每行首尾空格但保留换行
+            cleanContent = cleanContent
+                .split('\n')
+                .map(line => line.trim())
+                .join('\n')
+                .trim(); // 去除整体首尾空白
+            
+            return cleanContent || "文档内容为空";
+        } catch (error) {
+            console.error('获取文档内容失败:', error);
+            throw error;
+        }
+    }
+
+    private async replaceDocumentContent(newContent: string): Promise<void> {
+        try {
+            const editor = this.getEditor();
+            if (!editor) {
+                throw new Error("请先打开一个文档");
+            }
+            
+            const blockId = editor.protyle.block.rootID;
+            
+            // 使用思源笔记API更新文档内容
+            const response = await fetch('/api/block/updateBlock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    id: blockId,
+                    data: newContent,
+                    dataType: 'markdown'
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`API请求失败: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            if (result.code !== 0) {
+                throw new Error(result.msg || "更新文档内容失败");
+            }
+            
+        } catch (error) {
+            console.error('更新文档内容失败:', error);
+            throw error;
         }
     }
 
@@ -4095,9 +4484,16 @@ export default class PluginSample extends Plugin {
     }
 
     private getEditor() {
+        // 获取当前活动的标签页
+        const currentTab = this.getOpenedTab();
+        if (currentTab && currentTab.model && currentTab.model.editor && currentTab.model.editor.protyle) {
+            return currentTab.model.editor.protyle;
+        }
+        
+        // 如果无法获取当前活动标签页，回退到原来的方法
         const editors = getAllEditor();
         if (editors.length === 0) {
-            showMessage("please open doc first");
+            showMessage("请先打开一个文档");
             return;
         }
         return editors[0];
